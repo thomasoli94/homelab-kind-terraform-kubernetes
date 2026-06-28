@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-demo
+  namespace: app-demo
+spec:
+  replicas: 2                      # quero 2 pods rodando
+  selector:
+    matchLabels:
+      app: app-demo               # o Deployment gerencia pods com este label
+  template:                        # o "molde" do pod
+    metadata:
+      labels:
+        app: app-demo             # o pod nasce com este label
+    spec:
+      containers:
+        - name: app-demo
+          image: app-demo:1.0.0
+          imagePullPolicy: IfNotPresent   # use a imagem local; nao tente baixar
+          ports:
+            - containerPort: 8080
+          envFrom:                 # injeta TODAS as chaves do ConfigMap e do Secret
+            - configMapRef:
+                name: app-demo-config
+            - secretRef:
+                name: app-demo-secret
+          readinessProbe:          # "pronto pra receber trafego?"
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:           # "ainda esta vivo?"
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:              # o que o pod RESERVA (garantido)
+              cpu: "50m"
+              memory: "64Mi"
+            limits:                # o teto que o pod NAO pode passar
+              cpu: "250m"
+              memory: "128Mi"
