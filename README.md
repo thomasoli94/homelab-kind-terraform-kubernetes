@@ -1,4 +1,4 @@
-# homelab-kind-terraform-kubernetes
+# homelab k8s
 
 Homelab local para estudar Kubernetes usando kind, Ansible e manifests Kubernetes.
 
