@@ -1,0 +1,5 @@
+---
+# Orquestrador: reconstrói o homelab inteiro do zero, na ordem certa.
+# Uso: ansible-playbook site.yml
+- ansible.builtin.import_playbook: 01-tooling.yml
+- ansible.builtin.import_playbook: 02-cluster.yml
