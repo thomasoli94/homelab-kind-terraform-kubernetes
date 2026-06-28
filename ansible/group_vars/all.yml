@@ -1,0 +1,7 @@
+---
+# Onde os binários vão (precisa estar no PATH — /usr/local/bin já está)
+bin_dir: /usr/local/bin
+
+# --- Cluster kind (usado a partir da Fase 3) ---
+cluster_name: homelab
+worker_count: 2   # sua máquina (8 vCPU / 7.7 GiB) roda 1 control-plane + 2 workers

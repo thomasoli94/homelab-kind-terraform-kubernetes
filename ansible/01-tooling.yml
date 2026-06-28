@@ -1,0 +1,129 @@
+---
+- name: "Fase 1 — Instalar ferramentas do homelab (idempotente)"
+  hosts: local
+  connection: local
+  gather_facts: false
+
+  tasks:
+    # ---------- Utilitários de base (apt) ----------
+    - name: "apt — instalar utilitários (unzip, jq, make, tree)"
+      ansible.builtin.apt:
+        name: [unzip, jq, make, tree]
+        state: present
+        update_cache: true
+      become: true
+
+    # ---------- kubectl (binário único) ----------
+    - name: "kubectl — descobrir a versão estável"
+      ansible.builtin.uri:
+        url: https://dl.k8s.io/release/stable.txt
+        return_content: true
+      register: kubectl_stable
+      changed_when: false
+
+    - name: "kubectl — já está instalado?"
+      ansible.builtin.stat:
+        path: "{{ bin_dir }}/kubectl"
+      register: kubectl_bin
+
+    - name: "kubectl — instalar binário"
+      ansible.builtin.get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_stable.content | trim }}/bin/linux/amd64/kubectl"
+        dest: "{{ bin_dir }}/kubectl"
+        mode: "0755"
+        owner: root
+        group: root
+      become: true
+      when: not kubectl_bin.stat.exists
+
+    # ---------- kind (binário único) ----------
+    - name: "kind — descobrir a última versão"
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/kubernetes-sigs/kind/releases/latest
+        headers: { User-Agent: ansible-homelab }
+        return_content: true
+      register: kind_latest
+      changed_when: false
+
+    - name: "kind — já está instalado?"
+      ansible.builtin.stat:
+        path: "{{ bin_dir }}/kind"
+      register: kind_bin
+
+    - name: "kind — instalar binário"
+      ansible.builtin.get_url:
+        url: "https://kind.sigs.k8s.io/dl/{{ kind_latest.json.tag_name }}/kind-linux-amd64"
+        dest: "{{ bin_dir }}/kind"
+        mode: "0755"
+        owner: root
+        group: root
+      become: true
+      when: not kind_bin.stat.exists
+
+    # ---------- helm (tarball) ----------
+    - name: "helm — descobrir a última versão"
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/helm/helm/releases/latest
+        headers: { User-Agent: ansible-homelab }
+        return_content: true
+      register: helm_latest
+      changed_when: false
+
+    - name: "helm — já está instalado?"
+      ansible.builtin.stat:
+        path: "{{ bin_dir }}/helm"
+      register: helm_bin
+
+    - name: "helm — baixar e extrair o tarball em /tmp"
+      ansible.builtin.unarchive:
+        src: "https://get.helm.sh/helm-{{ helm_latest.json.tag_name }}-linux-amd64.tar.gz"
+        dest: /tmp
+        remote_src: true
+      when: not helm_bin.stat.exists
+
+    - name: "helm — instalar binário em {{ bin_dir }}"
+      ansible.builtin.copy:
+        src: /tmp/linux-amd64/helm
+        dest: "{{ bin_dir }}/helm"
+        mode: "0755"
+        owner: root
+        group: root
+        remote_src: true
+      become: true
+      when: not helm_bin.stat.exists
+
+    # ---------- terraform (zip — usa o unzip instalado lá em cima) ----------
+    - name: "terraform — descobrir a versão atual"
+      ansible.builtin.uri:
+        url: https://checkpoint-api.hashicorp.com/v1/check/terraform
+        return_content: true
+      register: tf_latest
+      changed_when: false
+
+    - name: "terraform — já está instalado?"
+      ansible.builtin.stat:
+        path: "{{ bin_dir }}/terraform"
+      register: tf_bin
+
+    - name: "terraform — baixar e extrair o zip em {{ bin_dir }}"
+      ansible.builtin.unarchive:
+        src: "https://releases.hashicorp.com/terraform/{{ tf_latest.json.current_version }}/terraform_{{ tf_latest.json.current_version }}_linux_amd64.zip"
+        dest: "{{ bin_dir }}"
+        remote_src: true
+      become: true
+      when: not tf_bin.stat.exists
+
+    # ---------- Verificação final ----------
+    - name: "Verificação — coletar versões"
+      ansible.builtin.shell: |
+        echo "kubectl   : $(kubectl version --client 2>/dev/null | head -n1)"
+        echo "kind      : $(kind version 2>/dev/null)"
+        echo "helm      : $(helm version --short 2>/dev/null)"
+        echo "terraform : $(terraform version 2>/dev/null | head -n1)"
+        echo "jq        : $(jq --version 2>/dev/null)"
+      register: tool_versions
+      changed_when: false
+
+    - name: "Verificação — mostrar versões"
+      ansible.builtin.debug:
+        var: tool_versions.stdout_lines
