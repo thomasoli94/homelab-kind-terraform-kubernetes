@@ -1,0 +1,34 @@
+---
+- name: "Fase 3 — Provisionar o cluster kind (idempotente)"
+  hosts: local
+  connection: local
+  gather_facts: false
+
+  vars:
+    kind_config_rendered: /tmp/kind-config.yaml
+
+  tasks:
+    - name: "Verificar quais clusters kind já existem"
+      ansible.builtin.command: kind get clusters
+      register: kind_clusters
+      changed_when: false
+
+    - name: "Renderizar o config do kind a partir do template"
+      ansible.builtin.template:
+        src: templates/kind-config.yaml.j2
+        dest: "{{ kind_config_rendered }}"
+      when: cluster_name not in kind_clusters.stdout_lines
+
+    - name: "Criar o cluster kind '{{ cluster_name }}'"
+      ansible.builtin.command: >
+        kind create cluster
+        --name {{ cluster_name }}
+        --config {{ kind_config_rendered }}
+        --wait 120s
+      when: cluster_name not in kind_clusters.stdout_lines
+      register: kind_create
+
+    - name: "Aviso se o cluster já existia"
+      ansible.builtin.debug:
+        msg: "Cluster '{{ cluster_name }}' já existe — nada a criar."
+      when: cluster_name in kind_clusters.stdout_lines
