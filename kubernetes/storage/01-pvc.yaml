@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-demo-data
+  namespace: app-demo
+spec:
+  accessModes:
+    - ReadWriteOnce          # um node por vez pode montar pra escrita
+  resources:
+    requests:
+      storage: 100Mi         # estou pedindo 100 MB
+  # sem storageClassName: usa a 'standard' (default) automaticamente
