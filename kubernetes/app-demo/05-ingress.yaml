@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-demo
+  namespace: app-demo
+spec:
+  ingressClassName: nginx          # usa o controller ingress-nginx (a classe que vimos)
+  rules:
+    - host: app-demo.local         # o hostname que vamos acessar
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: app-demo     # manda pro Service app-demo
+                port:
+                  number: 80       # na porta 80 do Service
